@@ -1,0 +1,267 @@
+﻿Version=3
+IconFile=
+NumberOfModules=1
+Module1=texto
+ModuleVisible1=1
+Package=b4a.example
+DoNotOverwriteManifest=False
+ManifestCode='This code will be applied to the manifest file during compilation.~\n~'You do not need to modify it in most cases.~\n~'See this link for for more information: http://www.basic4ppc.com/forum/showthread.php?p=78136~\n~AddManifestText(~\n~<uses-sdk android:minSdkVersion="4" android:targetSdkVersion="14"/>~\n~<supports-screens android:largeScreens="true" ~\n~    android:normalScreens="true" ~\n~    android:smallScreens="true" ~\n~    android:anyDensity="true"/>)~\n~SetApplicationAttribute(android:icon, "@drawable/icon")~\n~SetApplicationAttribute(android:label, "$LABEL$")~\n~'End of default text.~\n~AddPermission(android.permission.BLUETOOTH)
+UserTypesHint=
+NumberOfFiles=2
+File1=eq.bal
+File2=texto.bal
+NumberOfLibraries=4
+Library1=core
+Library2=eqlib
+Library3=phone
+Library4=tts
+@EndOfDesignText@
+#Region  Project Attributes 
+	#ApplicationLabel: RecYachay
+	#VersionCode: 1
+	#VersionName: 
+	'SupportedOrientations possible values: unspecified, landscape or portrait.
+	#SupportedOrientations: portrait
+	#CanInstallToExternalStorage: False
+#End Region
+
+#Region  Activity Attributes 
+	#FullScreen: False
+	#IncludeTitle: False
+#End Region
+
+Sub Process_Globals
+	'These global variables will be declared once when the application starts.
+	'These variables can be accessed from all modules.
+	'Dim Voice As VoiceRecognition
+	Dim EQ As EQlib
+	Dim VR As VoiceRecognition
+	Dim TTS1 As TTS
+	Dim aux As String
+End Sub
+
+Sub Globals
+	'These global variables will be redeclared each time the activity is created.
+	'These variables can only be accessed from this module.
+	Dim RecognitionDone As Boolean = False
+	Dim EQB1Lbl As Label
+	Dim EQB2Lbl As Label
+	Dim EQB3Lbl As Label
+	Dim EQB4Lbl As Label
+	Dim EQB5Lbl As Label
+	Dim EQBand1 As SeekBar
+	Dim EQBand2 As SeekBar
+	Dim EQBand3 As SeekBar
+	Dim EQBand4 As SeekBar
+	Dim EQBand5 As SeekBar
+	Dim EQBtnDone As Button
+	Dim EQBtnStart As Button
+	Dim EQLbl1 As Label
+	Dim EQLbl2 As Label
+	Dim EQLbl3 As Label
+	Dim EQLbl4 As Label
+	Dim EQLbl5 As Label
+	Dim EQOnCB As CheckBox
+	Dim EQPnl As Panel
+	Dim EQPnlBG As Panel
+	
+	Dim FRange() As Short						'Stores the Level range for seek bar processing
+	
+	Dim EQMap As Map
+	Dim Button1 As Button
+	Dim EditText1 As EditText
+End Sub
+
+Sub Activity_Create(FirstTime As Boolean)
+	'Do not forget to load the layout file created with the visual designer. For example:
+	'Activity.LoadLayout("Layout1")
+	Activity.LoadLayout("EQ.bal")
+	'size the background to full screen
+	EQPnlBG.SetLayout(0,0,100%x,100%y)
+	'Center the EQ panel
+	EQPnl.Left=(Activity.Width-EQPnl.Width)/2
+	EQPnl.Top=(Activity.Height-EQPnl.Height)/2
+	
+	EQMap.Initialize
+	'Voice.Initialize("Voice")
+    '
+    'If (IsPaused(Events)) Then
+    '    StartService(Events)
+    'End If
+	If FirstTime Then
+		VR.Initialize("VR")
+		TTS1.Initialize("TTS1")
+	End If
+	If VR.IsSupported Then
+		ToastMessageShow("Listo para empezar!.", False)
+	Else
+		ToastMessageShow("El reconocimiento de voz no es soportado por su dispositivo", True)
+	End If
+	VR.Prompt = "Bienvenido"
+	VR.Language="sp"
+End Sub
+'Sub Voice_Result(Success As Boolean, Text As List)
+'    If (Success) Then
+'        Dim Lines As String = ""
+'       For i = 0 To Text.Size - 1
+'            Lines = Lines & "|" & Text.Get(i)
+'        Next
+        'CallSub2(Events, "SendData", Lines)
+'    End If
+'    RecognitionDone = True
+'End Sub
+Sub Activity_Resume
+	'If (RecognitionDone) Then
+    '    RecognitionDone = False
+    '    Activity.Finish
+    'Else
+    '    Voice.Listen
+    'End If
+	EQOpen	
+End Sub
+
+Sub Activity_Pause (UserClosed As Boolean)
+	If EQ.IsInitialized Then
+		SaveSettings
+		If UserClosed Then EQ.Release
+	End If
+End Sub
+Sub SaveSettings
+		'Save the current Eq settings
+		EQMap.Put("CurrB5",EQ.GetBandLevel(0))
+		EQMap.Put("CurrB4",EQ.GetBandLevel(1))
+		EQMap.Put("CurrB3",EQ.GetBandLevel(2))
+		EQMap.Put("CurrB2",EQ.GetBandLevel(3))
+		EQMap.Put("CurrB1",EQ.GetBandLevel(4))
+		EQMap.Put("CurrEnable",EQOnCB.Checked)
+		File.WriteMap(File.DirDefaultExternal,"EQSettings.map",EQMap)
+End Sub
+Sub LoadSettings
+	'Load previous settings
+	If File.Exists(File.DirDefaultExternal,"EQSettings.map") Then
+		EQMap=File.ReadMap(File.DirDefaultExternal,"EQSettings.map")
+		'EQ.SetProperties(EQMap.Get("Curr"))
+		'Position SeekBars
+		EQBand1.Value=EQMap.Get("CurrB1")+FRange(1)
+		EQBand2.Value=EQMap.Get("CurrB2")+FRange(1)
+		EQBand3.Value=EQMap.Get("CurrB3")+FRange(1)
+		EQBand4.Value=EQMap.Get("CurrB4")+FRange(1)
+		EQBand5.Value=EQMap.Get("CurrB5")+FRange(1)
+
+		EQOnCB.Checked=EQMap.Get("CurrEnable")
+	Else
+		'Center SeekBars
+		EQBand1.Value=FRange(1)
+		EQBand2.Value=FRange(1)
+		EQBand3.Value=FRange(1)
+		EQBand4.Value=FRange(1)
+		EQBand5.Value=FRange(1)
+	End If	
+End Sub
+
+Sub EQOpen
+	If EQ.IsAvailable = False Then Return
+	
+	If EQ.IsInitialized = False Then
+		EQ.Initialize
+		Log(EQ.IsInitialized)
+		'Test to make sure it initialized
+		If EQ.IsInitialized = False Then Return
+	End If
+	
+	If EQ.HasControl = False Then
+		ToastMessageShow("Another App has control of the Equalizer",False)
+		Return
+	End If
+	
+	'Set Up Values
+	EQLbl1.Text = "1 - "&(EQ.GetCenterFreq(4)/1000)&" Hz"
+	EQLbl2.Text = "2 - "&(EQ.GetCenterFreq(3)/1000)&" Hz"
+	EQLbl3.Text = "3 - "&(EQ.GetCenterFreq(2)/1000)&" Hz"
+	EQLbl4.Text = "4 - "&(EQ.GetCenterFreq(1)/1000)&" Hz"
+	EQLbl5.Text = "5 - "&(EQ.GetCenterFreq(0)/1000)&" Hz"
+	
+	'Seek bars
+	FRange=EQ.GetBandLevelRange
+	
+	EQBand1.Max=FRange(1)*2
+	EQBand2.Max=FRange(1)*2
+	EQBand3.Max=FRange(1)*2
+	EQBand4.Max=FRange(1)*2
+	EQBand5.Max=FRange(1)*2
+	
+	LoadSettings
+	
+	'Turn on the panel
+	EQPnlBG.Visible=True
+
+End Sub
+Sub EQPnlBG_Click
+	
+End Sub
+Sub EQPnlBG_LongClick
+	
+End Sub
+Sub EQOnCB_CheckedChange(Checked As Boolean)
+	If EQOnCB.Checked Then 
+		EQ.Enable(True)
+	Else
+		EQ.Enable(False)
+	End If
+End Sub
+Sub EQBtnDone_Click
+	Activity.Finish
+End Sub
+Sub EQLevels_ValueChanged (Value As Int, UserChanged As Boolean)
+	
+	Dim Send As SeekBar
+	Dim Gain As Float
+	Send = Sender
+	
+	Select Send.Tag
+	
+	Case "1"
+		Gain=Value-FRange(1)
+		EQB1Lbl.Text=Gain
+		EQ.SetBandLevel(4,Gain)
+	
+	Case "2"
+		Gain=Value-FRange(1)
+		EQB2Lbl.Text=Gain
+		EQ.SetBandLevel(3,Gain)
+		
+	Case "3"
+		Gain=Value-FRange(1)
+		EQB3Lbl.Text=Gain
+		EQ.SetBandLevel(2,Gain)
+	
+	Case "4"
+		Gain=Value-FRange(1)
+		EQB4Lbl.Text=Gain
+		EQ.SetBandLevel(1,Gain)
+	
+	Case "5"
+		Gain=Value-FRange(1)
+		EQB5Lbl.Text=Gain
+		EQ.SetBandLevel(0,Gain)
+		
+	End Select
+	
+	
+End Sub
+
+
+Sub Button1_Click
+	'Voice.Initialize("Voice")
+	VR.Listen
+	Activity.LoadLayout("texto")
+End Sub
+Sub VR_Result (Success As Boolean, Texts As List)
+	If Success = True Then
+		ToastMessageShow(Texts.Get(0), True)
+		TTS1.Speak(Texts.Get(0), True)
+		aux=Texts.Get(0)
+		EditText1.Text=aux
+	End If
+	
+End Sub
